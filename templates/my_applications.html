@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="command-deck">
+    <div class="command-top">
+        <div class="command-title">
+            <h1>Мои заявки</h1>
+            <p>История и текущие статусы ваших откликов в студенческие проектные команды.</p>
+        </div>
+        <div class="command-actions">
+            <span class="spec-counter">Подано заявок: <strong>{{ applications|length }}</strong></span>
+            <a class="btn btn-ghost btn-small" href="{% url 'home' %}">Каталог проектов</a>
+        </div>
+    </div>
+</section>
+
+<div class="rows">
+    {% for app in applications %}
+        <div class="row">
+            <div class="row-stack">
+                <a class="row-title" href="{% url 'project_detail' app.project.pk %}">{{ app.project.title }}</a>
+                <div class="muted row-sub">
+                    Автор проекта: <strong>{{ app.project.owner.username }}</strong>
+                    · Подана: <span class="meta-date">{{ app.created_at|date:"d.m.Y H:i" }}</span>
+                </div>
+            </div>
+            <div class="row-meta">
+                <span class="status status-{{ app.status }}">{{ app.get_status_display }}</span>
+                <a class="btn btn-ghost btn-small" href="{% url 'project_detail' app.project.pk %}">К проекту →</a>
+            </div>
+        </div>
+    {% empty %}
+        <div class="empty">Вы пока не подавали заявок. <a href="{% url 'home' %}">Найдите проект</a>, где пригодятся ваши навыки.</div>
+    {% endfor %}
+</div>
+{% endblock %}

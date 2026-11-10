@@ -1,0 +1,66 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}TeamFinder — студенческие проектные команды{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'teams/style.css' %}?v=7">
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a href="{% url 'home' %}" class="brand">TeamFinder</a>
+            <nav class="nav">
+                <a href="{% url 'home' %}" {% if request.resolver_match.url_name == 'home' %}class="active"{% endif %}>Каталог проектов</a>
+                {% if user.is_authenticated %}
+                    {% if user.profile.role == 'teacher' or user.profile.role == 'admin' or user.is_staff %}
+                        <a href="{% url 'moderation_list' %}" {% if request.resolver_match.url_name == 'moderation_list' %}class="active"{% endif %}>Модерация</a>
+                    {% endif %}
+                    {% if user.profile.role != 'teacher' %}
+                        <a href="{% url 'my_projects' %}" {% if request.resolver_match.url_name == 'my_projects' %}class="active"{% endif %}>Мои проекты</a>
+                        <a href="{% url 'my_applications' %}" {% if request.resolver_match.url_name == 'my_applications' %}class="active"{% endif %}>Мои заявки</a>
+                    {% endif %}
+                    <a href="{% url 'notifications_list' %}" {% if request.resolver_match.url_name == 'notifications_list' %}class="active"{% endif %}>
+                        Уведомления
+                        {% if unread_notifications_count %}
+                            <span class="notif-badge">{{ unread_notifications_count }}</span>
+                        {% endif %}
+                    </a>
+                    <a href="{% url 'profile_edit' %}" {% if request.resolver_match.url_name == 'profile_edit' %}class="active"{% endif %}>Профиль</a>
+                {% endif %}
+            </nav>
+            <div class="nav-user">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'profile_edit' %}" class="user-badge" title="Перейти в профиль">
+                        {{ user.username }}
+                        {% if user.profile.role == 'teacher' %}· Преподаватель{% elif user.profile.course %}· {{ user.profile.course }} курс{% endif %}
+                    </a>
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="link-btn">Выйти</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}" class="link-btn">Войти</a>
+                    <a href="{% url 'register' %}" class="btn btn-small">Регистрация</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+    <main class="page">
+        {% for message in messages %}
+            <div class="msg {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+        {% block content %}{% endblock %}
+    </main>
+    <footer class="site-footer">
+        <div class="site-footer-inner">
+            <span><strong>TeamFinder</strong> — студенческая платформа проектных команд колледжа</span>
+            <span>Курсовые, дипломные и хакатон-проекты</span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Уведомления — TeamFinder{% endblock %}
+{% block content %}
+<section class="command-deck">
+    <div class="command-top">
+        <div class="command-title">
+            <h1>Уведомления {% if unread_notifications_count %}<span class="notif-badge">{{ unread_notifications_count }}</span>{% endif %}</h1>
+            <p>События по вашим проектам, заявкам, учебной группе и сообщениям в командном чате.</p>
+        </div>
+        {% if unread_notifications_count %}
+            <div class="command-actions">
+                <form method="post" action="{% url 'notifications_mark_all_read' %}" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-ghost btn-small">Отметить всё прочитанным</button>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+</section>
+
+<div class="rows">
+    {% for n in notifications %}
+        <div class="row {% if not n.is_read %}notif-unread{% endif %}">
+            <div class="row-stack" style="flex: 1 1 280px; min-width: 0;">
+                <div class="notif-line">
+                    {% if not n.is_read %}
+                        <span class="status status-mod-pending">Новое</span>
+                    {% endif %}
+                    <span>{{ n.message }}</span>
+                </div>
+                <div class="meta-date">
+                    {{ n.created_at|date:"d.m.Y H:i" }}
+                </div>
+            </div>
+            <div class="row-meta">
+                {% if n.link %}
+                    <a class="btn btn-small btn-ghost" href="{{ n.link }}">Перейти</a>
+                {% endif %}
+                {% if not n.is_read %}
+                    <form method="post" action="{% url 'notification_mark_read' n.pk %}" style="margin: 0;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-small">Отметить прочитанным</button>
+                    </form>
+                {% else %}
+                    <span class="muted" style="font-size: 0.85rem;">Прочитано</span>
+                {% endif %}
+            </div>
+        </div>
+    {% empty %}
+        <div class="empty">У вас пока нет уведомлений.</div>
+    {% endfor %}
+</div>
+{% endblock %}

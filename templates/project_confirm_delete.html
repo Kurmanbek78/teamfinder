@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="command-deck">
+    <div class="command-top">
+        <div class="command-title">
+            <h1>Удалить проект?</h1>
+            <p>Подтвердите удаление проекта из каталога TeamFinder.</p>
+        </div>
+    </div>
+</section>
+<div class="form-card">
+    <p>Проект «<strong>{{ project.title }}</strong>» и все заявки на него будут удалены. Это нельзя отменить.</p>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-actions">
+            <button type="submit" class="btn btn-danger">Удалить проект</button>
+            <a class="btn btn-ghost" href="{% url 'project_detail' project.pk %}">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

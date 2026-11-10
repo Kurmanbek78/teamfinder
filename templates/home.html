@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="command-deck" aria-label="Панель управления каталогом и поиск">
+    <div class="command-top">
+        <div class="command-title">
+            <h1>Проекты ищут участников</h1>
+            <p>Выберите проект своего курса, где пригодятся ваши навыки, или опубликуйте собственную идею и соберите команду для курсовой, диплома или хакатона.</p>
+        </div>
+        <div class="command-actions">
+            <span class="spec-counter">Найдено проектов: <strong>{{ projects|length }}</strong></span>
+            {% if user.is_authenticated %}
+                {% if user.profile.role == 'teacher' or user.profile.role == 'admin' or user.is_staff %}
+                    <a class="btn" href="{% url 'moderation_list' %}">Модерация проектов</a>
+                {% elif user.profile.role == 'student' or user.profile.role == 'author' %}
+                    <a class="btn" href="{% url 'project_create' %}">+ Создать проект</a>
+                {% endif %}
+                <a class="btn btn-ghost" href="{% url 'profile_edit' %}">Настроить навыки и направления</a>
+            {% else %}
+                <a class="btn" href="{% url 'register' %}">Зарегистрироваться</a>
+                <a class="btn btn-ghost" href="{% url 'login' %}">Войти в аккаунт</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <form method="get" action="{% url 'home' %}" class="filter-bar">
+        <div class="filter-field filter-field-search">
+            <label for="filter-q" class="filter-label">Поиск по проектам</label>
+            <input type="text" id="filter-q" name="q" value="{{ q }}" placeholder="Поиск по названию или описанию..." aria-label="Поиск по проектам">
+        </div>
+        <div class="filter-field">
+            <label for="filter-direction" class="filter-label">Направление</label>
+            <select id="filter-direction" name="direction" aria-label="Фильтр по направлению">
+                <option value="">Все направления</option>
+                {% for d in directions %}
+                    <option value="{{ d.pk }}" {% if selected_direction == d.pk|stringformat:"s" or selected_direction == d.name %}selected{% endif %}>{{ d.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label for="filter-skill" class="filter-label">Требуемый навык</label>
+            <select id="filter-skill" name="skill" aria-label="Фильтр по навыку">
+                <option value="">Все навыки</option>
+                {% regroup skills by direction as skill_groups %}
+                {% for group in skill_groups %}
+                    <optgroup label="{{ group.grouper|default:'Прочее' }}">
+                        {% for s in group.list %}
+                            <option value="{{ s.pk }}" {% if selected_skill == s.pk|stringformat:"s" or selected_skill == s.name %}selected{% endif %}>{{ s.name }}</option>
+                        {% endfor %}
+                    </optgroup>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-field">
+            <label for="filter-sort" class="filter-label">Сортировка</label>
+            <select id="filter-sort" name="sort" aria-label="Сортировка" onchange="this.form.submit()">
+                <option value="new" {% if sort != 'match' %}selected{% endif %}>Сначала новые</option>
+                <option value="match" {% if sort == 'match' %}selected{% endif %}>Сначала подходящие по навыкам</option>
+            </select>
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn">Найти</button>
+            {% if q or selected_direction or selected_skill or sort == 'match' %}
+                <a class="btn btn-ghost" href="{% url 'home' %}">Сбросить</a>
+            {% endif %}
+        </div>
+    </form>
+</section>
+
+<div class="registry-list" role="region" aria-label="Открытые проекты">
+    {% for project in projects %}
+        <article class="registry-entry">
+            <div class="entry-body">
+                <div class="entry-main">
+                    <h2 class="entry-title">
+                        <a href="{% url 'project_detail' project.pk %}">{{ project.title }}</a>
+                    </h2>
+                    <p class="entry-desc">{{ project.description|truncatewords:28 }}</p>
+                </div>
+
+                <div class="entry-aside">
+                    <div class="entry-badges">
+                        <span class="status status-{{ project.status }}">{{ project.get_status_display }}</span>
+                        {% if project.owner.profile.course %}
+                            <span class="course-pill">{{ project.owner.profile.get_course_display }}</span>
+                        {% endif %}
+                        {% if project.max_members %}
+                            <span class="spots-badge {% if project.free_spots > 0 %}spots-open{% else %}spots-full{% endif %}">
+                                Свободно: {{ project.free_spots }} из {{ project.max_members }}
+                            </span>
+                        {% endif %}
+                    </div>
+                    <a class="btn btn-ghost btn-small entry-link" href="{% url 'project_detail' project.pk %}">Подробнее →</a>
+                </div>
+            </div>
+
+            <div class="entry-foot">
+                <div class="entry-specs">
+                    {% if project.required_directions.all %}
+                        <div class="skills">
+                            <span class="skills-label">Направления:</span>
+                            {% for dir in project.required_directions.all %}
+                                <span class="dir-tag">{{ dir.name }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <div class="skills-grouped">
+                        <span class="skills-label">Ищем навыки:</span>
+                        {% regroup project.required_skills.all by direction as proj_skill_groups %}
+                        {% if proj_skill_groups %}
+                            {% for group in proj_skill_groups %}
+                                <div class="skill-group">
+                                    <span class="skill-group-name">{{ group.grouper|default:"Прочее" }}:</span>
+                                    {% for skill in group.list %}
+                                        <span class="tag">{{ skill.name }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <span class="muted">навыки не указаны</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="entry-meta">
+                    {% if project.total_skills_count %}
+                        <span class="skill-match {% if project.matched_skills_count > 0 %}skill-match-ok{% endif %}">
+                            Совпадает {{ project.matched_skills_count }} из {{ project.total_skills_count }} навыков проекта
+                        </span>
+                    {% endif %}
+                    <span class="entry-author">
+                        Автор: <strong>{{ project.owner.username }}</strong>
+                        {% if project.owner.profile.study_group %}({{ project.owner.profile.study_group.name }}){% endif %}
+                        {% if project.max_members %} · Мест: {{ project.accepted_count }}/{{ project.max_members }}{% endif %}
+                    </span>
+                </div>
+            </div>
+        </article>
+    {% empty %}
+        {% if q or selected_direction or selected_skill %}
+            <div class="empty">По вашему запросу проектов не найдено. <a href="{% url 'home' %}">Сбросить фильтры</a></div>
+        {% else %}
+            <div class="empty">Пока нет открытых проектов. Студенты могут опубликовать первый.</div>
+        {% endif %}
+    {% endfor %}
+</div>
+{% endblock %}

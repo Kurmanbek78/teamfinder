@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Командный чат: {{ project.title }} — TeamFinder{% endblock %}
+{% block content %}
+<section class="command-deck">
+    <div class="command-top">
+        <div class="command-title">
+            <h1>Командный чат: {{ project.title }}</h1>
+            <p>Доступен только автору проекта и принятым участникам команды</p>
+        </div>
+        <div class="command-actions">
+            <a class="btn btn-ghost btn-small" href="{% url 'project_detail' project.pk %}">← К странице проекта</a>
+        </div>
+    </div>
+</section>
+
+<div class="detail">
+    <section class="chat-box">
+        <div class="chat-feed">
+            {% for msg in chat_messages %}
+                <article class="chat-msg {% if msg.author_id == user.id %}chat-msg-own{% endif %}">
+                    <div class="chat-msg-head">
+                        <span class="chat-author">
+                            <strong>{{ msg.author.username }}</strong>
+                            {% if msg.author_id == project.owner_id %}
+                                <span class="dir-tag">Автор проекта</span>
+                            {% endif %}
+                        </span>
+                        <time class="meta-date">{{ msg.created_at|date:"d.m.Y H:i" }}</time>
+                    </div>
+                    {% if msg.text %}
+                        <div class="chat-msg-text">{{ msg.text|linebreaksbr }}</div>
+                    {% endif %}
+                    {% if msg.attachment %}
+                        <div class="chat-attachment">
+                            <a href="{% url 'chat_attachment_download' msg.pk %}" class="chat-file-link">
+                                Скачать вложение: <strong>{{ msg.filename }}</strong>
+                            </a>
+                        </div>
+                    {% endif %}
+                </article>
+            {% empty %}
+                <div class="empty">В командном чате пока нет сообщений. Напишите первым или поделитесь материалами проекта!</div>
+            {% endfor %}
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="chat-form">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            {% for field in form %}
+                <div class="form-field">
+                    {{ field.errors }}
+                    {{ field.label_tag }}
+                    {{ field }}
+                </div>
+            {% endfor %}
+            <div class="helptext" style="margin-bottom: 12px;">
+                Допустимые форматы: PDF, DOCX, XLSX, CSV, TXT, PNG, JPG, WEBP, PY, JS, TS, HTML, CSS, JSON, MD (до 10 МБ).
+            </div>
+            <button type="submit" class="btn">Отправить в чат</button>
+        </form>
+    </section>
+
+    <aside class="panel">
+        <h2 class="panel-title">Состав команды {% if project.max_members %}({{ project.accepted_count }}/{{ project.max_members }}){% endif %}</h2>
+        <div class="rows">
+            <div class="row row-compact">
+                <div class="row-stack">
+                    <strong>{{ project.owner.username }}</strong>
+                    {% if project.owner.profile.study_group %}
+                        <span class="muted row-sub">Группа: {{ project.owner.profile.study_group.name }}</span>
+                    {% endif %}
+                </div>
+                <span class="dir-tag">Автор</span>
+            </div>
+            {% for member_app in team_members %}
+                <div class="row row-compact">
+                    <div class="row-stack">
+                        <strong>{{ member_app.applicant.username }}</strong>
+                        {% if member_app.applicant.profile.study_group %}
+                            <span class="muted row-sub">Группа: {{ member_app.applicant.profile.study_group.name }}</span>
+                        {% endif %}
+                    </div>
+                    <span class="status status-accepted">Участник</span>
+                </div>
+            {% empty %}
+                <p class="muted" style="margin: 4px 0 0; font-size: 0.9rem;">Принятых участников пока нет.</p>
+            {% endfor %}
+        </div>
+    </aside>
+</div>
+{% endblock %}

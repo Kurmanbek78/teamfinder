@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="auth-wrap">
+    <section class="command-deck">
+        <div class="command-top">
+            <div class="command-title">
+                <h1>Регистрация студента</h1>
+                <p>Выберите свой курс и учебную группу для участия в проектах колледжа.</p>
+            </div>
+        </div>
+    </section>
+    <div class="form-card narrow">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            {% for field in form %}
+                <div class="form-field">
+                    {{ field.errors }}
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.help_text %}
+                        <div class="helptext" id="{{ field.auto_id }}_helptext">{{ field.help_text|safe }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <button type="submit" class="btn" style="width: 100%;">Зарегистрироваться</button>
+        </form>
+        <p class="auth-switch muted">Уже есть аккаунт? <a href="{% url 'login' %}">Войдите</a></p>
+    </div>
+</div>
+{% if study_groups %}
+<script>
+(function() {
+    var courseSelect = document.getElementById('id_course');
+    var groupSelect = document.getElementById('id_study_group');
+    if (!courseSelect || !groupSelect) return;
+    var groupCourses = {
+        {% for g in study_groups %}"{{ g.pk }}": "{{ g.course }}"{% if not forloop.last %}, {% endif %}{% endfor %}
+    };
+    function filterGroups() {
+        var selectedCourse = courseSelect.value;
+        for (var i = 0; i < groupSelect.options.length; i++) {
+            var opt = groupSelect.options[i];
+            if (!opt.value) continue;
+            var matches = !selectedCourse || groupCourses[opt.value] === selectedCourse;
+            opt.hidden = !matches;
+        }
+        if (groupSelect.value && groupCourses[groupSelect.value] && groupCourses[groupSelect.value] !== selectedCourse) {
+            groupSelect.value = '';
+        }
+    }
+    courseSelect.addEventListener('change', filterGroups);
+    filterGroups();
+})();
+</script>
+{% endif %}
+{% endblock %}

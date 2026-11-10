@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Модерация проектов — TeamFinder{% endblock %}
+{% block content %}
+<section class="command-deck">
+    <div class="command-top">
+        <div class="command-title">
+            <h1>Проекты на проверке</h1>
+            <p>Проверка новых и отредактированных студенческих проектов перед публикацией в общем каталоге.</p>
+        </div>
+        <div class="command-actions">
+            <span class="spec-counter">Ожидают решения: <strong>{{ pending_projects|length }}</strong></span>
+        </div>
+    </div>
+</section>
+
+<div class="rows" style="margin-bottom: 32px;">
+    {% for project in pending_projects %}
+        <div class="row">
+            <div class="row-stack">
+                <a class="row-title" href="{% url 'project_detail' project.pk %}">{{ project.title }}</a>
+                <div class="muted row-sub">
+                    Автор: <strong>{{ project.owner.username }}</strong>
+                    {% if project.owner.profile.course %} · {{ project.owner.profile.get_course_display }}{% endif %}
+                    {% if project.owner.profile.study_group %} ({{ project.owner.profile.study_group.name }}){% endif %}
+                    · <span class="meta-date">{{ project.created_at|date:"d.m.Y H:i" }}</span>
+                </div>
+            </div>
+            <div class="row-meta">
+                <span class="status status-mod-pending">{{ project.get_moderation_status_display }}</span>
+                <a class="btn btn-small" href="{% url 'project_detail' project.pk %}">Проверить</a>
+            </div>
+        </div>
+    {% empty %}
+        <div class="empty">Сейчас нет проектов, ожидающих проверки.</div>
+    {% endfor %}
+</div>
+
+<div class="section-head">
+    <h2>Недавно проверенные проекты</h2>
+    <span class="spec-counter">В списке: <strong>{{ reviewed_projects|length }}</strong></span>
+</div>
+<div class="rows">
+    {% for project in reviewed_projects %}
+        <div class="row">
+            <div class="row-stack">
+                <a class="row-title" href="{% url 'project_detail' project.pk %}">{{ project.title }}</a>
+                <div class="muted row-sub">
+                    Автор: <strong>{{ project.owner.username }}</strong>
+                    {% if project.owner.profile.course %} · {{ project.owner.profile.get_course_display }}{% endif %}
+                </div>
+            </div>
+            <div class="row-meta">
+                <span class="status status-mod-{{ project.moderation_status }}">{{ project.get_moderation_status_display }}</span>
+                <span class="status status-{{ project.status }}">{{ project.get_status_display }}</span>
+                <a class="btn btn-ghost btn-small" href="{% url 'project_detail' project.pk %}">Открыть →</a>
+            </div>
+        </div>
+    {% empty %}
+        <div class="empty">Проверенных проектов пока нет.</div>
+    {% endfor %}
+</div>
+{% endblock %}

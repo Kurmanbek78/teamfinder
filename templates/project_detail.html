@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% block title %}{{ project.title }} — TeamFinder{% endblock %}
+{% block content %}
+<section class="command-deck">
+    <div class="command-top">
+        <div class="command-title">
+            <h1>{{ project.title }}</h1>
+            <div class="meta">
+                <span>
+                    Автор: <strong>{{ project.owner.username }}</strong>
+                    {% if project.owner.profile.course %} · {{ project.owner.profile.get_course_display }}{% endif %}
+                    {% if project.owner.profile.study_group %} ({{ project.owner.profile.study_group.name }}){% endif %}
+                </span>
+                <span class="status status-{{ project.status }}">{{ project.get_status_display }}</span>
+                {% if user == project.owner or can_moderate %}
+                    <span class="status status-mod-{{ project.moderation_status }}">Модерация: {{ project.get_moderation_status_display }}</span>
+                {% endif %}
+                {% if project.max_members %}
+                    <span class="spots-badge {% if project.free_spots > 0 %}spots-open{% else %}spots-full{% endif %}">
+                        Мест: {{ project.accepted_count }} из {{ project.max_members }} (свободно {{ project.free_spots }})
+                    </span>
+                {% endif %}
+                <span class="meta-date">{{ project.created_at|date:"d.m.Y" }}</span>
+            </div>
+        </div>
+        {% if user == project.owner or can_access_chat %}
+            <div class="command-actions">
+                {% if can_access_chat %}
+                    <a class="btn" href="{% url 'project_chat' project.pk %}">Командный чат</a>
+                {% endif %}
+                {% if user == project.owner %}
+                    <a class="btn btn-ghost" href="{% url 'project_edit' project.pk %}">Редактировать</a>
+                    <a class="btn btn-ghost btn-danger-ghost" href="{% url 'project_delete' project.pk %}">Удалить</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</section>
+
+<div class="detail">
+    <article class="project-sheet">
+        {% if project.moderation_status == 'rejected' and project.rejection_reason %}
+            <div class="msg error">
+                <strong>Проект отклонён преподавателем:</strong> {{ project.rejection_reason }}
+                {% if user == project.owner %}
+                    <div class="msg-sub">Отредактируйте проект, чтобы отправить его на повторную проверку.</div>
+                {% endif %}
+            </div>
+        {% elif project.moderation_status == 'pending' and user == project.owner %}
+            <div class="msg warning">
+                Проект находится на проверке у преподавателя. После одобрения он появится в общем каталоге.
+            </div>
+        {% endif %}
+
+        <h2 class="sheet-section-title">Описание задачи и проекта</h2>
+        <div class="prose">{{ project.description|linebreaks }}</div>
+
+        <div class="spec-box">
+            {% if project.required_directions.all %}
+                <div class="skills">
+                    <span class="skills-label">Направления:</span>
+                    {% for dir in project.required_directions.all %}
+                        <span class="dir-tag">{{ dir.name }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <div class="skills-grouped">
+                <span class="skills-label">Ищем навыки:</span>
+                {% regroup project.required_skills.all by direction as proj_skill_groups %}
+                {% if proj_skill_groups %}
+                    {% for group in proj_skill_groups %}
+                        <div class="skill-group">
+                            <span class="skill-group-name">{{ group.grouper|default:"Прочее" }}:</span>
+                            {% for skill in group.list %}
+                                <span class="tag">{{ skill.name }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <span class="muted">навыки не указаны</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if can_moderate %}
+            <div class="owner-actions moderation-box">
+                <h2 class="panel-title">Модерация преподавателем</h2>
+                <div class="decide">
+                    <form method="post" action="{% url 'project_moderate' project.pk 'approve' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-small">Одобрить проект</button>
+                    </form>
+                </div>
+                <form method="post" action="{% url 'project_moderate' project.pk 'reject' %}" class="reject-form">
+                    {% csrf_token %}
+                    <label for="id_rejection_reason">Причина отклонения:</label>
+                    <textarea name="rejection_reason" id="id_rejection_reason" rows="2" placeholder="Укажите замечания для автора проекта...">{{ project.rejection_reason }}</textarea>
+                    <div class="reject-actions">
+                        <button type="submit" class="btn btn-small btn-danger-ghost">Отклонить проект</button>
+                    </div>
+                </form>
+            </div>
+        {% endif %}
+    </article>
+
+    <aside class="panel">
+        {% if user == project.owner or can_moderate %}
+            <h2 class="panel-title">Заявки {% if project.max_members %}({{ project.accepted_count }}/{{ project.max_members }}){% endif %}</h2>
+            <div class="app-list">
+                {% for app in applications %}
+                    <div class="application">
+                        <div class="app-head">
+                            <span>
+                                <b>{{ app.applicant.username }}</b>
+                                {% if app.applicant.profile.course %}
+                                    <span class="muted app-sub">
+                                        · {{ app.applicant.profile.get_course_display }}{% if app.applicant.profile.study_group %}, {{ app.applicant.profile.study_group.name }}{% endif %}
+                                    </span>
+                                {% endif %}
+                            </span>
+                            <span class="status status-{{ app.status }}">{{ app.get_status_display }}</span>
+                        </div>
+                        {% if app.message %}<p class="app-msg">{{ app.message }}</p>{% endif %}
+                        <p class="app-bio">
+                            <span class="skills-label">О себе:</span>
+                            {% if app.applicant.profile.bio %}
+                                {{ app.applicant.profile.bio|truncatewords:25 }}
+                            {% else %}
+                                <span class="muted">Описание не заполнено</span>
+                            {% endif %}
+                        </p>
+                        {% if app.applicant.profile.directions.all %}
+                            <div class="skills" style="margin-bottom: 6px;">
+                                <span class="skills-label">Направления:</span>
+                                {% for dir in app.applicant.profile.directions.all %}
+                                    <span class="dir-tag">{{ dir.name }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="skills-grouped">
+                            {% regroup app.applicant.profile.skills.all by direction as app_skill_groups %}
+                            {% if app_skill_groups %}
+                                {% for group in app_skill_groups %}
+                                    <div class="skill-group">
+                                        <span class="skill-group-name">{{ group.grouper|default:"Прочее" }}:</span>
+                                        {% for skill in group.list %}
+                                            <span class="tag">{{ skill.name }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <span class="muted">навыки не указаны</span>
+                            {% endif %}
+                        </div>
+                        {% if user == project.owner %}
+                            {% if app.status == 'pending' %}
+                                <div class="decide">
+                                    <form method="post" action="{% url 'application_decide' app.pk 'accept' %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-small">Принять</button>
+                                    </form>
+                                    <form method="post" action="{% url 'application_decide' app.pk 'reject' %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-small btn-ghost">Отклонить</button>
+                                    </form>
+                                </div>
+                            {% elif app.status == 'accepted' %}
+                                <div class="decide">
+                                    <form method="post" action="{% url 'application_decide' app.pk 'remove' %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-small btn-danger-ghost">Удалить из команды</button>
+                                    </form>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% empty %}
+                    <p class="muted">Заявок пока нет.</p>
+                {% endfor %}
+            </div>
+        {% elif user.is_authenticated and already_applied %}
+            <h2 class="panel-title">Заявка отправлена</h2>
+            <p class="muted">Статус смотрите в разделе <a href="{% url 'my_applications' %}">«Мои заявки»</a>.</p>
+        {% elif user.is_authenticated and not same_course %}
+            <h2 class="panel-title">Ограничение по курсу</h2>
+            <p class="muted">
+                Подать заявку могут только студенты того же курса, что и автор проекта
+                {% if project.owner.profile.course %}({{ project.owner.profile.get_course_display }}){% endif %}.
+            </p>
+        {% elif user.is_authenticated and project.status == 'open' and project.moderation_status == 'approved' %}
+            <h2 class="panel-title">Подать заявку</h2>
+            <form method="post" action="{% url 'project_apply' project.pk %}">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="btn">Отправить заявку</button>
+            </form>
+        {% elif not user.is_authenticated %}
+            <h2 class="panel-title">Хотите участвовать?</h2>
+            <p><a href="{% url 'login' %}">Войдите</a>, чтобы подать заявку.</p>
+        {% else %}
+            <p class="muted">Набор в этот проект закрыт.</p>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

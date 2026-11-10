@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="command-deck">
+    <div class="command-top">
+        <div class="command-title">
+            <h1>Мои проекты</h1>
+            <p>Проекты, в которых вы являетесь автором и руководителем команды.</p>
+        </div>
+        <div class="command-actions">
+            <span class="spec-counter">Всего: <strong>{{ projects|length }}</strong></span>
+            {% if user.profile.role == 'student' or user.profile.role == 'author' %}
+                <a class="btn" href="{% url 'project_create' %}">+ Создать проект</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<div class="rows">
+    {% for project in projects %}
+        <div class="row">
+            <div class="row-stack">
+                <a class="row-title" href="{% url 'project_detail' project.pk %}">{{ project.title }}</a>
+                <div class="muted row-sub">
+                    Опубликован: <span class="meta-date">{{ project.created_at|date:"d.m.Y" }}</span>
+                    {% if project.max_members %}
+                        · Участников: <strong>{{ project.accepted_count }} из {{ project.max_members }}</strong> (свободно {{ project.free_spots }})
+                    {% endif %}
+                </div>
+            </div>
+            <div class="row-meta">
+                <span class="status status-mod-{{ project.moderation_status }}">{{ project.get_moderation_status_display }}</span>
+                <span class="status status-{{ project.status }}">{{ project.get_status_display }}</span>
+                <a class="btn btn-ghost btn-small" href="{% url 'project_detail' project.pk %}">Открыть →</a>
+            </div>
+        </div>
+    {% empty %}
+        <div class="empty">У вас пока нет проектов.</div>
+    {% endfor %}
+</div>
+{% endblock %}

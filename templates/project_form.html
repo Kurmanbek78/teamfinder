@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} — TeamFinder{% endblock %}
+{% block content %}
+<section class="command-deck">
+    <div class="command-top">
+        <div class="command-title">
+            <h1>{{ title }}</h1>
+            {% if profile_obj %}
+                <p>Укажите свои направления и ключевые навыки, чтобы система точнее подбирала проекты вашего курса.</p>
+            {% else %}
+                <p>Заполните паспорт проекта, выберите направления и необходимые навыки для участников команды.</p>
+            {% endif %}
+        </div>
+        <div class="command-actions">
+            <span id="selection-counter" class="spec-counter" style="display: none;"></span>
+            <a class="btn btn-ghost btn-small" href="{% url 'home' %}">← Каталог проектов</a>
+        </div>
+    </div>
+</section>
+
+<div class="form-card form-card-wide">
+    {% if profile_obj %}
+        <div class="profile-summary">
+            <div class="profile-summary-item">
+                <span class="muted">Пользователь</span>
+                <strong>{{ profile_obj.user.username }}</strong>
+            </div>
+            <div class="profile-summary-item">
+                <span class="muted">Роль в системе</span>
+                <strong>{{ profile_obj.get_role_display }}</strong>
+            </div>
+            {% if profile_obj.role == 'student' %}
+                <div class="profile-summary-item">
+                    <span class="muted">Курс и группа</span>
+                    <strong>
+                        {% if profile_obj.study_group %}
+                            {{ profile_obj.study_group.name }} ({{ profile_obj.get_course_display }})
+                        {% elif profile_obj.course %}
+                            {{ profile_obj.get_course_display }}
+                        {% else %}
+                            Не указаны
+                        {% endif %}
+                    </strong>
+                </div>
+                {% if profile_obj.study_group %}
+                    <div class="profile-summary-item">
+                        <span class="muted">Подтверждение группы</span>
+                        <span class="status {% if profile_obj.group_status == 'confirmed' %}status-accepted{% else %}status-mod-pending{% endif %}">
+                            {{ profile_obj.get_group_status_display }}
+                        </span>
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    {% endif %}
+    <form method="post">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {% for field in form %}
+            <div class="form-field {% if field.name == 'skills' or field.name == 'required_skills' %}form-field-skills{% endif %}">
+                {{ field.errors }}
+                <div class="field-header">
+                    {{ field.label_tag }}
+                    {% if field.name == 'skills' or field.name == 'required_skills' %}
+                        <input type="text" id="skill-quick-search" class="skill-search-input" placeholder="Быстрый фильтр по навыкам (например: Python, Figma, SQL)...">
+                    {% endif %}
+                </div>
+                {{ field }}
+                {% if field.help_text %}
+                    <div class="helptext" id="{{ field.auto_id }}_helptext">{{ field.help_text|safe }}</div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        <div class="form-actions">
+            <button type="submit" class="btn">Сохранить изменения</button>
+            <a class="btn btn-ghost" href="{% url 'home' %}">Отмена</a>
+        </div>
+    </form>
+</div>
+
+<script>
+(function() {
+    var dirContainer = document.getElementById('id_directions') || document.getElementById('id_required_directions');
+    var skillContainer = document.getElementById('id_skills') || document.getElementById('id_required_skills');
+    var counterEl = document.getElementById('selection-counter');
+    var searchInput = document.getElementById('skill-quick-search');
+
+    function updateState() {
+        var checkedDirs = {};
+        var dirCount = 0;
+        var skillCount = 0;
+
+        if (dirContainer) {
+            var dirInputs = dirContainer.querySelectorAll('input[type="checkbox"]');
+            for (var i = 0; i < dirInputs.length; i++) {
+                if (dirInputs[i].checked) {
+                    dirCount++;
+                    var lbl = dirInputs[i].closest('label');
+                    if (lbl) checkedDirs[lbl.textContent.trim()] = true;
+                }
+            }
+        }
+
+        if (skillContainer) {
+            var skillInputs = skillContainer.querySelectorAll('input[type="checkbox"]');
+            for (var j = 0; j < skillInputs.length; j++) {
+                if (skillInputs[j].checked) skillCount++;
+            }
+            var groups = skillContainer.children;
+            for (var k = 0; k < groups.length; k++) {
+                var groupEl = groups[k];
+                var titleLabel = groupEl.querySelector(':scope > label');
+                var hasCheckedSkill = groupEl.querySelectorAll('input[type="checkbox"]:checked').length > 0;
+                var dirName = titleLabel ? titleLabel.textContent.trim() : '';
+                if (checkedDirs[dirName] || hasCheckedSkill) {
+                    groupEl.classList.add('skill-group-active');
+                } else {
+                    groupEl.classList.remove('skill-group-active');
+                }
+            }
+        }
+
+        if (counterEl && (dirContainer || skillContainer)) {
+            counterEl.style.display = 'inline-flex';
+            counterEl.textContent = 'Выбрано направлений: ' + dirCount + ' · навыков: ' + skillCount;
+        }
+    }
+
+    if (dirContainer) dirContainer.addEventListener('change', updateState);
+    if (skillContainer) skillContainer.addEventListener('change', updateState);
+
+    if (searchInput && skillContainer) {
+        searchInput.addEventListener('input', function() {
+            var q = searchInput.value.trim().toLowerCase();
+            var groups = skillContainer.children;
+            for (var i = 0; i < groups.length; i++) {
+                var groupEl = groups[i];
+                var items = groupEl.querySelectorAll(':scope > div');
+                var visibleInGroup = 0;
+                for (var j = 0; j < items.length; j++) {
+                    var text = items[j].textContent.trim().toLowerCase();
+                    var show = !q || text.indexOf(q) !== -1;
+                    items[j].style.display = show ? '' : 'none';
+                    if (show) visibleInGroup++;
+                }
+                groupEl.style.display = visibleInGroup > 0 ? '' : 'none';
+            }
+        });
+    }
+
+    updateState();
+})();
+</script>
+{% endblock %}

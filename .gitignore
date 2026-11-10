@@ -1,0 +1,28 @@
+# Environment and secrets
+.env
+.env.*
+
+# Local databases and fixture dumps
+db.sqlite3
+db.sqlite3-journal
+demo_data.json
+
+# Virtual environments
+venv/
+venv313/
+.venv/
+
+# User-uploaded and private media
+private_media/
+media/
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
